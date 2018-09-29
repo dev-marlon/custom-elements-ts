@@ -66,7 +66,18 @@
             .toLowerCase()
             .replace(/(\-\w)/g, function (m) { return m[1].toUpperCase(); });
     };
+    var tryParseInt = function (value) {
+        return (parseInt(value) == value && parseFloat(value) !== NaN) ? parseInt(value) : value;
+    };
 
+    var Listen = function (eventName, selector) {
+        return function (target, methodName) {
+            if (!target.constructor.listeners) {
+                target.constructor.listeners = [];
+            }
+            target.constructor.listeners.push({ selector: selector, eventName: eventName, handler: target[methodName] });
+        };
+    };
     var addEventListeners = function (target) {
         if (target.constructor.listeners) {
             var _loop_1 = function (listener) {
@@ -87,6 +98,39 @@
         }
     };
 
+    var Prop = function () {
+        return function (target, propName) {
+            var attrName = toKebabCase(propName);
+            function get() {
+                if (this.props[propName]) {
+                    return this.props[propName];
+                }
+                return this.getAttribute(attrName);
+            }
+            function set(value) {
+                if (this.__connected) {
+                    var oldValue = this.props[propName];
+                    this.props[propName] = tryParseInt(value);
+                    if (typeof value != 'object') {
+                        this.setAttribute(attrName, value);
+                    }
+                    else {
+                        this.onAttributeChange(attrName, oldValue, value, false);
+                    }
+                }
+                else {
+                    if (!this.hasAttribute(toKebabCase(propName))) {
+                        this.constructor.propsInit[propName] = value;
+                    }
+                }
+            }
+            if (!target.constructor.propsInit) {
+                target.constructor.propsInit = {};
+            }
+            target.constructor.propsInit[propName] = null;
+            Object.defineProperty(target, propName, { get: get, set: set });
+        };
+    };
     var getProps = function (target) {
         var watchAttributes = target.constructor.watchAttributes;
         var plainAttributes = __assign({}, watchAttributes);
@@ -189,7 +233,7 @@
         __extends(CodeExampleElement, _super);
         function CodeExampleElement() {
             var _this = _super.call(this) || this;
-            var code = "\n// Typescript\nimport { CustomElement } from 'custom-elements-ts';\n\n@CustomElement({\n  tag: 'cts-message',\n  template: '<h1></h1>'\n  style: '' // css styles here or can use styleUrl\n})\nexport class MessageElement extends HTMLElement {\n\n  constructor() {\n    super();\n    this.addEventListener('click', () => {\n      alert('what are you waiting for?');\n    });\n  }\n\n  get message() {\n    return this.getAttribute('message');\n  }\n\n  set message(value) {\n    this.setAttribute('message', value);\n  }\n\n  connectedCallback(){\n    this.shadowRoot.querySelector('h1').innerHTML = this.message;\n  }\n}\n\n// HTML\n<cts-message message=\"npm install custom-elements-ts\"></cts-message>\n        ";
+            var code = "\n// Typescript\nimport { CustomElement, Prop, Listen } from 'custom-elements-ts';\n\n@CustomElement({\n  tag: 'cts-message',\n  template: '<h1></h1>'\n  style: '' // css styles here or can use styleUrl\n})\nexport class MessageElement extends HTMLElement {\n\n  @Listen('click')\n  handleClick() {\n    alert('what are you waiting for?');\n  }\n\n  @Prop() message: string;\n\n  connectedCallback(){\n    this.shadowRoot.querySelector('h1').innerHTML = this.message;\n  }\n}\n\n// HTML\n<cts-message message=\"npm install custom-elements-ts\"></cts-message>\n        ";
             _this.code = Prism.highlight(code, Prism.languages.javascript);
             return _this;
         }
@@ -210,32 +254,30 @@
     var MessageElement = (function (_super) {
         __extends(MessageElement, _super);
         function MessageElement() {
-            var _this = _super.call(this) || this;
-            _this.addEventListener('click', function () {
-                alert('what are you waiting for?');
-            });
-            return _this;
+            return _super !== null && _super.apply(this, arguments) || this;
         }
-        Object.defineProperty(MessageElement.prototype, "message", {
-            get: function () {
-                return this.getAttribute('message');
-            },
-            set: function (value) {
-                this.setAttribute('message', value);
-            },
-            enumerable: true,
-            configurable: true
-        });
+        MessageElement.prototype.handleClick = function () {
+            alert('what are you waiting for?');
+        };
         MessageElement.prototype.connectedCallback = function () {
             this.shadowRoot.querySelector('h1').innerHTML = this.message;
         };
+        __decorate([
+            Listen('click'),
+            __metadata("design:type", Function),
+            __metadata("design:paramtypes", []),
+            __metadata("design:returntype", void 0)
+        ], MessageElement.prototype, "handleClick", null);
+        __decorate([
+            Prop(),
+            __metadata("design:type", String)
+        ], MessageElement.prototype, "message", void 0);
         MessageElement = __decorate([
             CustomElement({
                 tag: 'cts-message',
                 template: '<h1></h1>',
                 style: "\n    :host {\n      margin: 0 auto;\n      margin-top: 50px;\n      display: block;\n      width: calc(100% - 50px);\n      text-align: center;\n      cursor: pointer;\n    }\n    h1 {\n      font-size: 14px;\n      margin: 0 auto;\n      padding: 20px;\n      background: #2e8edf;\n      color: whitesmoke;\n      border-radius: 3px;\n    }\n  "
-            }),
-            __metadata("design:paramtypes", [])
+            })
         ], MessageElement);
         return MessageElement;
     }(HTMLElement));
