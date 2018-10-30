@@ -80,10 +80,11 @@
     };
     var addEventListeners = function (target) {
         if (target.constructor.listeners) {
+            var targetRoot = target.shadowRoot || target;
             var _loop_1 = function (listener) {
                 var eventTarget = (listener.selector)
-                    ? target.shadowRoot.querySelector(listener.selector)
-                        ? target.shadowRoot.querySelector(listener.selector) : null
+                    ? targetRoot.querySelector(listener.selector)
+                        ? targetRoot.querySelector(listener.selector) : null
                     : target;
                 if (eventTarget) {
                     eventTarget.addEventListener(listener.eventName, function (e) {
